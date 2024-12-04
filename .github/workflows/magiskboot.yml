@@ -1,0 +1,64 @@
+name: Download and Patch Vendor Boot Image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  magisk-job:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install required dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip lz4 wget
+
+      - name: Download vendor_boot.img
+        run: |
+          wget https://gitlab.com/thenoobdevs2024/android_dump_samsung_a55x/-/raw/UP1A.231005.007/vendor_boot.img -O vendor_boot.img
+
+      - name: Decompress vendor_boot.img.lz4 (if exists)
+        run: |
+          if [ -f vendor_boot.img.lz4 ]; then
+            lz4 -B6 --content-size -f vendor_boot.img.lz4 vendor_boot.img
+          fi
+
+      - name: Create unpack directory and unpack vendor_boot.img
+        run: |
+          mkdir unpack
+          cd unpack
+          ../magiskboot unpack ../vendor_boot.img
+          ../magiskboot cpio vendor_ramdisk_recovery.cpio extract
+
+      - name: Apply hexpatches to recovery binary
+        run: |
+          ../magiskboot hexpatch system/bin/recovery e10313aaf40300aa6ecc009420010034 e10313aaf40300aa6ecc0094
+          ../magiskboot hexpatch system/bin/recovery eec3009420010034 eec3009420010035
+          ../magiskboot hexpatch system/bin/recovery 3ad3009420010034 3ad3009420010035
+          ../magiskboot hexpatch system/bin/recovery 50c0009420010034 50c0009420010035
+          ../magiskboot hexpatch system/bin/recovery 080109aae80000b4 080109aae80000b5
+          ../magiskboot hexpatch system/bin/recovery 20f0a6ef38b1681c 20f0a6ef38b9681c
+          ../magiskboot hexpatch system/bin/recovery 23f03aed38b1681c 23f03aed38b9681c
+          ../magiskboot hexpatch system/bin/recovery 20f09eef38b1681c 20f09eef38b9681c
+          ../magiskboot hexpatch system/bin/recovery 26f0ceec30b1681c 26f0ceec30b9681c
+          ../magiskboot hexpatch system/bin/recovery 24f0fcee30b1681c 24f0fcee30b9681c
+          ../magiskboot hexpatch system/bin/recovery 27f02eeb30b1681c 27f02eeb30b9681c
+          ../magiskboot hexpatch system/bin/recovery b4f082ee28b1701c b4f082ee28b970c1
+          ../magiskboot hexpatch system/bin/recovery 9ef0f4ec28b1701c 9ef0f4ec28b9701c
+          ../magiskboot hexpatch system/bin/recovery 9ef00ced28b1701c 9ef00ced28b9701c
+          ../magiskboot hexpatch system/bin/recovery 2001597ae0000054 2001597ae1000054
+          ../magiskboot hexpatch system/bin/recovery 2001597ac0000054 2001597ac1000054
+
+      - name: Repack the vendor_boot.img with patched recovery
+        run: |
+          ../magiskboot cpio vendor_ramdisk_recovery.cpio 'add 0755 system/bin/recovery system/bin/recovery'
+          ../magiskboot repack ../vendor_boot.img new-boot.img
+
+      - name: Copy the patched vendor_boot.img
+        run: |
+          cp new-boot.img ../vendor_boot-patched.img
