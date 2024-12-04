@@ -28,6 +28,10 @@ jobs:
             lz4 -B6 --content-size -f vendor_boot.img.lz4 vendor_boot.img
           fi
 
+      - name: Set executable permissions for magiskboot
+        run: |
+          chmod +x magiskboot
+
       - name: Create unpack directory and unpack vendor_boot.img
         run: |
           mkdir unpack
